@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main ./cmd/server"
+  bin = "./tmp/main"
+  delay = 1000
+  exclude_dir = ["tmp", "vendor", "docker", "migrations"]
+  include_ext = ["go"]
+  kill_delay = 500
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = true
