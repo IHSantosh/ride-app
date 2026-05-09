@@ -5,9 +5,21 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/santosh/ride-app/pkg/db"
 )
 
 func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system env")
+	}
+
+	// Connect to PostgreSQL
+	db.Connect()
+	defer db.Close()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -21,7 +33,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"service": "ride-app",
-			"version": "0.0.2",
+			"version": "0.0.3",
 		})
 	})
 
