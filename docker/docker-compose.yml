@@ -1,19 +1,17 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgis/postgis:15-3.3
     container_name: ride_postgres
     environment:
-      POSTGRES_DB: rideapp
-      POSTGRES_USER: rideapp
-      POSTGRES_PASSWORD: localdev123
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rideapp"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
