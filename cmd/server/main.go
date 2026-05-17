@@ -17,11 +17,9 @@ func main() {
 		log.Println("No .env file found, using system env")
 	}
 
-	// Connect to PostgreSQL
 	db.Connect()
 	defer db.Close()
 
-	// Connect to Redis
 	cache.Connect()
 	defer cache.Close()
 
@@ -38,13 +36,26 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"service": "ride-app",
-			"version": "0.0.5",
+			"version": "0.0.6",
 		})
 	})
 
 	// Auth routes
 	mux.HandleFunc("/v1/auth/otp/send", auth.SendOTPHandler)
 	mux.HandleFunc("/v1/auth/otp/verify", auth.VerifyOTPHandler)
+	mux.HandleFunc("/v1/auth/refresh", auth.RefreshTokenHandler)
+
+	// Protected route example
+	mux.HandleFunc("/v1/profile", auth.JWTMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		userID := r.Context().Value(auth.UserIDKey).(int64)
+		role := r.Context().Value(auth.RoleKey).(int)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"user_id": userID,
+			"role":    role,
+			"message": "you are authenticated",
+		})
+	}))
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+
+	"github.com/santosh/ride-app/pkg/db"
 )
 
 type SendOTPRequest struct {
@@ -15,6 +17,7 @@ type SendOTPRequest struct {
 type VerifyOTPRequest struct {
 	Phone string `json:"phone"`
 	OTP   string `json:"otp"`
+	Role  int    `json:"role"` // 1=rider, 2=driver
 }
 
 func SendOTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,12 +46,10 @@ func SendOTPHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// Dev mode — return OTP in response
-	// Production — send via SMS, never return in response
 	if os.Getenv("ENV") == "development" {
 		json.NewEncoder(w).Encode(map[string]string{
 			"message": "OTP sent successfully",
-			"otp":     otp, // remove this in production
+			"otp":     otp,
 		})
 		return
 	}
@@ -75,16 +76,106 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Role == 0 {
+		req.Role = 1 // default to rider
+	}
+
 	ctx := context.Background()
+
+	// Verify OTP
 	valid, err := VerifyOTP(ctx, req.Phone, req.OTP)
 	if err != nil || !valid {
 		http.Error(w, "invalid or expired OTP", http.StatusUnauthorized)
 		return
 	}
 
+	// Get or create user
+	var userID int64
+	err = db.Pool.QueryRow(ctx,
+		`SELECT id FROM users WHERE phone_number = $1 AND deleted_at IS NULL`,
+		req.Phone,
+	).Scan(&userID)
+
+	if err != nil {
+		// User not found — create new user
+		err = db.Pool.QueryRow(ctx,
+			`INSERT INTO users (phone_number, country_code, role, status, full_name)
+			 VALUES ($1, '+977', $2, 1, 'New User')
+			 RETURNING id`,
+			req.Phone, req.Role,
+		).Scan(&userID)
+
+		if err != nil {
+			http.Error(w, "failed to create user", http.StatusInternalServerError)
+			return
+		}
+
+		// Create wallet for new user
+		_, err = db.Pool.Exec(ctx,
+			`INSERT INTO wallets (user_id, balance_paisa) VALUES ($1, 0)`,
+			userID,
+		)
+		if err != nil {
+			http.Error(w, "failed to create wallet", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Generate tokens
+	accessToken, err := GenerateAccessToken(userID, req.Role)
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	refreshToken, err := GenerateRefreshToken(ctx, userID)
+	if err != nil {
+		http.Error(w, "failed to generate refresh token", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "OTP verified successfully",
-		"phone":   req.Phone,
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+		"user_id":       userID,
+		"role":          req.Role,
+		"is_new_user":   err == nil,
 	})
+}
+
+func RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.RefreshToken == "" {
+		http.Error(w, "refresh_token is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+
+	// Get user_id from Redis
+	key := "refresh:" + req.RefreshToken
+	var userID int64
+	err := db.Pool.QueryRow(ctx,
+		`SELECT id FROM users WHERE id = (
+			SELECT id FROM users LIMIT 1
+		)`).Scan(&userID)
+
+	// Get from Redis directly
+	import_cache := "github.com/santosh/ride-app/pkg/cache"
+	_ = import_cache
+
+	http.Error(w, "use cache client here", http.StatusInternalServerError)
 }
