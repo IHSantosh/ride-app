@@ -17,7 +17,7 @@ type SendOTPRequest struct {
 type VerifyOTPRequest struct {
 	Phone string `json:"phone"`
 	OTP   string `json:"otp"`
-	Role  int    `json:"role"` // 1=rider, 2=driver
+	Role  int    `json:"role"`
 }
 
 func SendOTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -77,19 +77,17 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Role == 0 {
-		req.Role = 1 // default to rider
+		req.Role = 1
 	}
 
 	ctx := context.Background()
 
-	// Verify OTP
 	valid, err := VerifyOTP(ctx, req.Phone, req.OTP)
 	if err != nil || !valid {
 		http.Error(w, "invalid or expired OTP", http.StatusUnauthorized)
 		return
 	}
 
-	// Get or create user
 	var userID int64
 	err = db.Pool.QueryRow(ctx,
 		`SELECT id FROM users WHERE phone_number = $1 AND deleted_at IS NULL`,
@@ -97,7 +95,6 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	).Scan(&userID)
 
 	if err != nil {
-		// User not found — create new user
 		err = db.Pool.QueryRow(ctx,
 			`INSERT INTO users (phone_number, country_code, role, status, full_name)
 			 VALUES ($1, '+977', $2, 1, 'New User')
@@ -110,7 +107,6 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Create wallet for new user
 		_, err = db.Pool.Exec(ctx,
 			`INSERT INTO wallets (user_id, balance_paisa) VALUES ($1, 0)`,
 			userID,
@@ -121,7 +117,6 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Generate tokens
 	accessToken, err := GenerateAccessToken(userID, req.Role)
 	if err != nil {
 		http.Error(w, "failed to generate token", http.StatusInternalServerError)
@@ -140,42 +135,5 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 		"refresh_token": refreshToken,
 		"user_id":       userID,
 		"role":          req.Role,
-		"is_new_user":   err == nil,
 	})
-}
-
-func RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req struct {
-		RefreshToken string `json:"refresh_token"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if req.RefreshToken == "" {
-		http.Error(w, "refresh_token is required", http.StatusBadRequest)
-		return
-	}
-
-	ctx := context.Background()
-
-	// Get user_id from Redis
-	key := "refresh:" + req.RefreshToken
-	var userID int64
-	err := db.Pool.QueryRow(ctx,
-		`SELECT id FROM users WHERE id = (
-			SELECT id FROM users LIMIT 1
-		)`).Scan(&userID)
-
-	// Get from Redis directly
-	import_cache := "github.com/santosh/ride-app/pkg/cache"
-	_ = import_cache
-
-	http.Error(w, "use cache client here", http.StatusInternalServerError)
 }
