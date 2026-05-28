@@ -8,6 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/santosh/ride-app/internal/auth"
+	"github.com/santosh/ride-app/internal/users"
 	"github.com/santosh/ride-app/pkg/cache"
 	"github.com/santosh/ride-app/pkg/db"
 )
@@ -36,7 +37,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"service": "ride-app",
-			"version": "0.0.6",
+			"version": "0.0.7",
 		})
 	})
 
@@ -45,17 +46,9 @@ func main() {
 	mux.HandleFunc("/v1/auth/otp/verify", auth.VerifyOTPHandler)
 	mux.HandleFunc("/v1/auth/refresh", auth.RefreshTokenHandler)
 
-	// Protected route example
-	mux.HandleFunc("/v1/profile", auth.JWTMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Context().Value(auth.UserIDKey).(int64)
-		role := r.Context().Value(auth.RoleKey).(int)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"user_id": userID,
-			"role":    role,
-			"message": "you are authenticated",
-		})
-	}))
+	// Rider routes (protected)
+	mux.HandleFunc("/v1/rider/profile", auth.JWTMiddleware(users.GetRiderProfileHandler))
+	mux.HandleFunc("/v1/rider/profile/update", auth.JWTMiddleware(users.UpdateRiderProfileHandler))
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
