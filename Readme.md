@@ -280,7 +280,6 @@ PATCH  /v1/rider/profile/update   Update rider profile (protected)
 
 ## 📝 Notes
 
-- `.env` is never committed — see `.env.example`
 - All money values in **paisa** (1 NPR = 100 paisa)
 - Development mode returns OTP in response body (no real SMS)
 - Default country code: `+977` (Nepal)
