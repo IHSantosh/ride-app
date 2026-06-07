@@ -1,135 +1,154 @@
+
+raw
+Readme · MD
 # 🚗 Ride-App — Nepal Ride Sharing Backend
-
-> A production-grade ride-sharing backend built in Go, designed for low-bandwidth networks (2G/3G), Nepal payment gateways, and a phased 2.5-year build plan.
-
+ 
+> A production-grade ride-sharing backend built in Go, designed for low-bandwidth networks (2G/3G), Nepal payment gateways, and a phased build plan.
+ 
 ---
-
+ 
 ## 📌 Project Status
-
-**Current Phase: Phase 0 → Phase 1 (Foundation)**
+ 
+**Current Phase: Phase 1 — Core Backend (In Progress)**
 **Started:** May 2026
-**Target Completion:** ~2.5 years (4–5 hrs/week)
-
+**Backend Prototype Target:** ~2 months from now
+ 
+### Progress Today (June 7, 2026)
+ 
 | Module | Status |
 |---|---|
-| Environment + Docker | ✅ Done |
-| Database Schema (all tables) | ✅ Done |
-| Auth — OTP + JWT + Refresh | ✅ Done |
-| Rider Profile CRUD | ✅ Done |
-| Driver Profile CRUD | 🔄 In Progress |
-| Wallet + Ledger | 🔄 Next |
-| Fare Calculation Engine | ⬜ Pending |
-| Ride Request + Matching | ⬜ Pending |
-| MQTT Real-time Layer | ⬜ Pending |
+| Environment + Docker + CI/CD | ✅ Complete |
+| Database Schema — all 5 tables | ✅ Complete |
+| Auth — OTP + JWT + Refresh | ✅ Complete |
+| Rider Profile CRUD | ✅ Complete |
+| Driver Profile CRUD | ✅ Complete |
+| Wallet + Double-entry Ledger | ✅ Complete |
+| Fare Calculation Engine | 🔄 Next |
+| Ride Request + State Machine | ⬜ Pending |
+| Driver Matching (Geohash) | ⬜ Pending |
+| MQTT Real-time Location | ⬜ Pending |
+| Safety + SOS | ⬜ Pending |
 | React Native Mobile App | ⬜ Pending |
-
+ 
 ---
-
+ 
+## ⏱️ Realistic Time Estimate
+ 
+At current pace (2–3 files/day, consistent sessions):
+ 
+| What | Estimate |
+|---|---|
+| Fare engine | 1–2 sessions |
+| Ride request + state machine | 3–4 sessions |
+| Driver matching (geohash) | 2–3 sessions |
+| Payment flow (cash + eSewa mock) | 2–3 sessions |
+| MQTT location layer | 3–4 sessions |
+| Safety + SOS | 1–2 sessions |
+| API hardening + tests | 2–3 sessions |
+| **Working backend prototype** | **~6–8 weeks** |
+| React Native mobile app | +3–4 months |
+| Full pilot-ready product | +2–3 months after app |
+ 
+**Backend alone is 6–8 weeks away at current velocity.**
+That means a working prototype by August 2026 is realistic — well within college final project timeline.
+ 
+---
+ 
 ## 🏗️ Architecture
-
+ 
 ### Tech Stack
 | Layer | Technology | Why |
 |---|---|---|
-| Language | Go | Fast, low memory, great for APIs |
-| Database | PostgreSQL + PostGIS | Geospatial queries for location |
-| Cache + Sessions | Redis | OTP storage, rate limiting, refresh tokens |
-| Real-time | MQTT (Mosquitto) | Low-bandwidth protocol, ideal for 2G/3G |
+| Language | Go | Fast, low memory, great for concurrent APIs |
+| Database | PostgreSQL + PostGIS | Geospatial queries for ride matching |
+| Cache + Sessions | Redis | OTP, rate limiting, refresh tokens, driver locations |
+| Real-time | MQTT (Mosquitto) | Low-bandwidth protocol, ideal for 2G/3G Nepal |
 | Containerization | Docker Compose | Simulates 3-server setup on single PC |
-| CI/CD | GitHub Actions | Auto-deploy to AWS EC2 |
-| Hosting | AWS EC2 | Current dev/staging server |
-
+| CI/CD | GitHub Actions | Auto-deploy to AWS EC2 on push |
+| Hosting | AWS EC2 | Dev/staging server |
+ 
 ### Server Architecture (Production Target)
 ```
-PC1 — Go API Server (port 8080)
+PC1 — Go API Server        (port 8080)
 PC2 — PostgreSQL + Redis
 PC3 — MQTT Broker (Mosquitto)
 ```
-During development, all three are simulated via Docker Compose on a single machine.
-
+During development, all three run via Docker Compose on a single machine.
+ 
 ### Folder Structure
 ```
 ride-app/
-├── cmd/server/          # Entry point
+├── cmd/server/          # Entry point — HTTP server, route wiring
 ├── internal/
-│   ├── auth/            # OTP, JWT, middleware
-│   ├── users/           # Rider profile
-│   ├── drivers/         # Driver profile + vehicle
-│   ├── rides/           # Ride lifecycle + fare engine
-│   ├── wallet/          # Ledger + balance
-│   ├── payments/        # eSewa, Khalti, cash
-│   └── safety/          # SOS, incidents
+│   ├── auth/            # OTP, JWT, middleware, refresh
+│   ├── users/           # Rider profile CRUD
+│   ├── drivers/         # Driver profile CRUD
+│   ├── rides/           # Ride lifecycle + fare engine (next)
+│   ├── wallet/          # Ledger + balance + topup
+│   ├── payments/        # eSewa, Khalti, cash (planned)
+│   └── safety/          # SOS, incidents (planned)
 ├── pkg/
-│   ├── db/              # PostgreSQL connection pool
+│   ├── db/              # PostgreSQL connection pool (pgx)
 │   ├── cache/           # Redis connection
-│   ├── mqtt/            # MQTT client
-│   └── response/        # Standard JSON response helpers
+│   ├── mqtt/            # MQTT client (planned)
+│   └── response/        # Standard response helpers
 ├── migrations/          # SQL migrations (up + down)
 ├── docker/              # Docker Compose + Mosquitto config
 └── docs/                # Wireframes + system design
 ```
-
+ 
 ---
-
+ 
 ## 🗄️ Database Schema
-
-### Tables
+ 
+### Tables (All 5 Complete)
 | Table | Purpose |
 |---|---|
-| `users` | All users (riders + drivers), phone-based auth |
-| `wallets` | One wallet per user, balance tracking |
-| `wallet_ledger` | Double-entry ledger, immutable transaction log |
-| `rider_profiles` | Rider-specific data, emergency contacts, preferences |
-| `driver_profiles` | Driver data, license, location, online status |
-
+| `users` | All users (riders + drivers), phone-based auth, soft deletes |
+| `wallets` | One wallet per user, balance in paisa |
+| `wallet_ledger` | Immutable double-entry transaction log |
+| `rider_profiles` | Emergency contacts, preferences, ratings |
+| `driver_profiles` | License, vehicle, online status, location |
+ 
 ### Key Design Decisions
 - **Balance in paisa (integer)** — no floating point money bugs
 - **Double-entry ledger** — balance = SUM of all ledger entries, never updated directly
-- **Soft deletes** on users (`deleted_at` column)
-- **PostGIS extension** enabled for geospatial ride matching
 - **Idempotency keys** on wallet_ledger — prevents double charges
-
+- **Soft deletes** on users — `deleted_at` column, data never lost
+- **PostGIS** — geospatial ride matching queries
 ---
-
+ 
 ## 🔐 Auth System
-
-Phone-based OTP authentication. No passwords.
-
-### Flow
+ 
+Phone-based OTP. No passwords.
+ 
+### Endpoints
 ```
 POST /v1/auth/otp/send     → Generate OTP, store in Redis (5min TTL)
-POST /v1/auth/otp/verify   → Verify OTP → create user if new → return JWT pair
+POST /v1/auth/otp/verify   → Verify OTP → create user + wallet → return JWT pair
 POST /v1/auth/refresh      → Refresh token → new access token
 ```
-
+ 
 ### Token Design
 - **Access token** — JWT, 15 min expiry, contains `user_id` + `role`
 - **Refresh token** — UUID, 30 days, stored in Redis
 - **Rate limiting** — max 3 OTP requests per phone per hour
-
 ### Roles
 | Value | Role |
 |---|---|
 | 1 | Rider |
 | 2 | Driver |
 | 3 | Admin |
-
-### Redis Keys
-```
-otp:{phone}           → "123456"      TTL: 300s
-otp_rate:{phone}      → "3"           TTL: 3600s
-refresh:{uuid}        → user_id       TTL: 2592000s
-```
-
+ 
 ---
-
+ 
 ## 💳 Wallet System
-
+ 
 ### Design
-- Every financial event = one new ledger row
-- Balance never stored directly — always calculated as `SUM(amount_paisa)`
-- Negative amounts = debits, positive = credits
-- All operations require idempotency key
-
+- Every financial event = one new immutable ledger row
+- Balance calculated as `SUM(amount_paisa)` — never stored directly
+- Negative = debit, positive = credit
+- All operations require idempotency key (auto-generated if not provided)
 ### Transaction Types
 | Type | Description |
 |---|---|
@@ -137,154 +156,119 @@ refresh:{uuid}        → user_id       TTL: 2592000s
 | `ride_payment` | Deducted after ride completion |
 | `refund` | Reversed after dispute |
 | `cancellation_fee` | Charged on late cancellation |
-
+ 
 ### Limits
-- Min top-up: NPR 50 (5000 paisa)
+- Min top-up: NPR 50 (5,000 paisa)
 - Max wallet balance: NPR 10,000 (1,000,000 paisa)
-- Max 3 top-ups per day
-
 ---
-
-## 🚕 Ride Lifecycle (Planned — Phase 1)
-
-### States
+ 
+## 🚕 Ride System (Next — Being Built)
+ 
+### State Machine
 ```
 REQUESTED → SEARCHING → MATCHED → DRIVER_ARRIVED → IN_PROGRESS → COMPLETED → PAID
                 ↓
             CANCELLED
 ```
-
+ 
 ### Driver Matching Algorithm
-- **Geohash bucketing** (precision 7, ~150m cells)
+- **Geohash bucketing** precision 7 (~150m cells)
 - Driver locations stored in Redis as geohash sets
-- On ride request: check rider's cell + 8 neighboring cells
+- Check rider's cell + 8 neighboring cells
 - Filter: online + no active ride
-- Sort: by actual distance
-- Offer to nearest driver first (15s timeout, then next)
+- Sort: actual distance
+- 15s timeout per driver, then offer to next
 - Fallback: expand to precision 6 (~1.2km) if no drivers found
-
 ### Fare Engine
 - Server-side only — client cannot influence fare
-- Based on: base fare + per_km rate + per_min rate + zone multiplier
-- Returns fare range (min/max), never a fixed price
-- Surge pricing logic planned for Phase 1
-
+- Base fare + per_km + per_min + zone multiplier
+- Returns fare range (min/max), never fixed price
+- All values in paisa
 ---
-
-## 📡 Real-time Layer (Planned — Phase 2)
-
-### MQTT Topic Design
+ 
+## 📡 Real-time Layer (Planned)
+ 
+### MQTT Topics
 ```
-ride/{ride_id}/state       → ride state changes (QoS 1)
-driver/{driver_id}/loc     → location delta updates (QoS 0)
-rider/{rider_id}/notify    → push notifications (QoS 1)
+ride/{ride_id}/state       → ride state changes     (QoS 1)
+driver/{driver_id}/loc     → delta location updates (QoS 0)
+rider/{rider_id}/notify    → push notifications     (QoS 1)
 ```
-
+ 
 ### Location Updates
-- Delta compression: only send change from last known position
-- ~20 bytes per update vs ~50 bytes for full coordinates
-- Sent every 3–5 seconds on movement
+- Delta compression — only send change from last known position
+- ~20 bytes per update (vs ~50 bytes full coordinates)
 - Cached in Redis for instant access
-
-### Reconnect Handling
-- Full state sync via `GET /v1/rides/:id` on reconnect
-- Vector clock versioning for conflict resolution
-- Redis SETNX for ride lock (prevents duplicate driver assignment)
-
+- Sent every 3–5 seconds on movement
 ---
-
-## 📱 Mobile App (Planned — Phase 3)
-
-- React Native (Android first)
-- Mapbox for maps (vector tiles, cacheable)
-- Offline-first design
-- Foreground service for background location (Android)
-- Low data mode: driver dots only (no names/photos over 2G)
-
-### Payment Gateways (Nepal)
-- eSewa
-- Khalti
-- Cash (driver confirms receipt)
-
----
-
-## 🗺️ 2.5 Year Roadmap
-
-| Phase | Timeline | Goal |
-|---|---|---|
-| Phase 0 | Months 1–2 | Single PC setup, Docker, auth, schema |
-| Phase 1 | Months 3–13 | Ride engine, fare, payments, security, tests |
-| Phase 2 | Months 14–21 | MQTT real-time, location, state sync, notifications |
-| Phase 3 | Months 22–27 | React Native rider + driver apps |
-| Phase 4 | Month 28–30 | Monitoring, pilot launch, 20-user test |
-
-**Pace:** 4–5 hours/week. Each phase has buffer built in.
-
----
-
+ 
 ## 🚀 Running Locally
-
+ 
 ### Prerequisites
 - Docker + Docker Compose
 - Go 1.22+
-- `migrate` CLI tool
-
+- `migrate` CLI
 ### Setup
 ```bash
-# Clone repo
 git clone https://github.com/IHSantosh/ride-app
 cd ride-app
-
-# Copy environment file
 cp .env.example .env
-
-# Start infrastructure (PostgreSQL, Redis, MQTT)
+# Edit .env — set DB_HOST=127.0.0.1, REDIS_HOST=127.0.0.1
+ 
 cd docker && docker compose up -d
-
-# Run migrations
 migrate -path ./migrations -database "postgres://rideapp:localdev123@127.0.0.1:5432/rideapp?sslmode=disable" up
-
-# Start API with hot reload
 cd .. && air
 ```
-
+ 
 ### Verify
 ```bash
 curl localhost:8080/health
-# {"status":"ok","service":"ride-app","version":"0.0.7"}
+# {"status":"ok","service":"ride-app","version":"0.0.9"}
 ```
-
-### API Endpoints (Current)
-```
-POST   /v1/auth/otp/send          Send OTP to phone number
-POST   /v1/auth/otp/verify        Verify OTP, returns JWT
-POST   /v1/auth/refresh           Refresh access token
-
-GET    /v1/rider/profile          Get rider profile (protected)
-PATCH  /v1/rider/profile/update   Update rider profile (protected)
-```
-
+ 
 ---
-
-## ⚠️ Edge Cases Handled
-
-- Double-tap ride request → idempotency key deduplicates
-- App crash during payment → webhook reconciliation
-- Rider offline after match → state sync on reconnect
-- GPS unavailable → manual pin placement fallback
-- Wallet insufficient mid-booking → auto-switch to cash
-- OTP SMS not delivered → resend with 60s cooldown
-- Map tiles not loaded → cached tiles + text-mode fallback
-
+ 
+## 📋 Current API Endpoints
+ 
+```
+GET    /health                        Service health check
+ 
+POST   /v1/auth/otp/send             Send OTP to phone
+POST   /v1/auth/otp/verify           Verify OTP → JWT tokens
+POST   /v1/auth/refresh              Refresh access token
+ 
+GET    /v1/rider/profile             Get rider profile
+PATCH  /v1/rider/profile/update      Update rider profile
+ 
+POST   /v1/driver/register           Register as driver
+GET    /v1/driver/profile            Get driver profile
+ 
+GET    /v1/wallet                    Get wallet + last 10 transactions
+POST   /v1/wallet/topup              Add funds to wallet
+```
+ 
 ---
-
+ 
+## ⚠️ Known Edge Cases Handled
+ 
+- Duplicate ride request → idempotency key deduplicates
+- Wallet frozen → topup rejected with reason
+- Max balance exceeded → topup rejected
+- Driver profile already exists → 400 with clear error
+- JWT expired → 401, use refresh token
+- OTP rate limit → 429 after 3 attempts/hour
+- Null GPS coordinates → pointer scan, returns 0
+---
+ 
 ## 📝 Notes
-
-- All money values in **paisa** (1 NPR = 100 paisa)
-- Development mode returns OTP in response body (no real SMS)
-- Default country code: `+977` (Nepal)
-- Designed and tested for 2G/3G network conditions
-
+ 
+- `.env` never committed — see `.env.example`
+- All money in **paisa** (1 NPR = 100 paisa)
+- Dev mode returns OTP in response (no real SMS)
+- Default country code `+977` (Nepal)
+- Encoding: JSON now, Protobuf planned for Phase 3 mobile
+- Designed for 2G/3G network conditions
 ---
-
-*Built by santoshih — HTB Academy Top 10% · Second semester CS student · Nepal*
+ 
+*Built by santoshih — HTB CPTS Top 10% · CS Student · Nepal*
+*Repo: github.com/IHSantosh/ride-app*
