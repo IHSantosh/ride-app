@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/santosh/ride-app/internal/auth"
 	"github.com/santosh/ride-app/internal/drivers"
+	"github.com/santosh/ride-app/internal/rides"
 	"github.com/santosh/ride-app/internal/users"
 	"github.com/santosh/ride-app/internal/wallet"
 	"github.com/santosh/ride-app/pkg/cache"
@@ -38,7 +39,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"service": "ride-app",
-			"version": "0.0.9",
+			"version": "0.1.0",
 		})
 	})
 
@@ -58,6 +59,12 @@ func main() {
 	// Wallet routes (protected)
 	mux.HandleFunc("/v1/wallet", auth.JWTMiddleware(wallet.GetWalletHandler))
 	mux.HandleFunc("/v1/wallet/topup", auth.JWTMiddleware(wallet.TopUpHandler))
+
+	// Rides routes
+	mux.HandleFunc("/v1/rides/request", auth.JWTMiddleware(rides.RequestRideHandler))
+	mux.HandleFunc("/v1/rides/fare-estimate", rides.FareEstimateHandler)
+	mux.HandleFunc("/v1/rides/", auth.JWTMiddleware(rides.GetRideHandler))
+	mux.HandleFunc("/v1/rides/cancel/", auth.JWTMiddleware(rides.CancelRideHandler))
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {

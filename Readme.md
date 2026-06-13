@@ -23,9 +23,9 @@ Readme · MD
 | Rider Profile CRUD | ✅ Complete |
 | Driver Profile CRUD | ✅ Complete |
 | Wallet + Double-entry Ledger | ✅ Complete |
-| Fare Calculation Engine | 🔄 Next |
-| Ride Request + State Machine | ⬜ Pending |
-| Driver Matching (Geohash) | ⬜ Pending |
+| Fare Calculation Engine | ✅ Complete |
+| Ride Request + State Machine | ✅ Complete (requested/cancelled) |
+| Driver Matching (Geohash) | 🔄 Next |
 | MQTT Real-time Location | ⬜ Pending |
 | Safety + SOS | ⬜ Pending |
 | React Native Mobile App | ⬜ Pending |
@@ -38,17 +38,12 @@ At current pace (2–3 files/day, consistent sessions):
  
 | What | Estimate |
 |---|---|
-| Fare engine | 1–2 sessions |
-| Ride request + state machine | 3–4 sessions |
-| Driver matching (geohash) | 2–3 sessions |
-| Payment flow (cash + eSewa mock) | 2–3 sessions |
-| MQTT location layer | 3–4 sessions |
-| Safety + SOS | 1–2 sessions |
-| API hardening + tests | 2–3 sessions |
-| **Working backend prototype** | **~6–8 weeks** |
-| React Native mobile app | +3–4 months |
-| Full pilot-ready product | +2–3 months after app |
- 
+| Ride Request + Fare Engine | ✅ Done — June 13, 2026 |
+| Driver Matching (Geohash) | ~2 sessions |
+| MQTT Location Layer | ~3-4 sessions |
+| Working Backend Prototype | ~4-5 weeks |
+
+
 **Backend alone is 6–8 weeks away at current velocity.**
 That means a working prototype by August 2026 is realistic — well within college final project timeline.
  
@@ -245,6 +240,10 @@ GET    /v1/driver/profile            Get driver profile
  
 GET    /v1/wallet                    Get wallet + last 10 transactions
 POST   /v1/wallet/topup              Add funds to wallet
+POST   /v1/rides/fare-estimate       Get fare estimate (no auth)
+POST   /v1/rides/request             Request a ride
+GET    /v1/rides/{id}                Get ride by ID
+POST   /v1/rides/cancel/{id}         Cancel a ride
 ```
  
 ---
